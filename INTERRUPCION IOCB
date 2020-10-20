@@ -1,0 +1,154 @@
+PROCESSOR 16F887
+#include <xc.inc>
+config FOSC = INTRC_CLKOUT// Oscillator Selection bits (INTOSC oscillator: CLKOUT function on RA6/OSC2/CLKOUT pin, I/O function on RA7/OSC1/CLKIN)
+ config WDTE = OFF       // Watchdog Timer Enable bit (WDT disabled and can be enabled by SWDTEN bit of the WDTCON register)
+ config PWRTE = OFF       // Power-up Timer Enable bit (PWRT enabled)
+ config MCLRE = ON       // RE3/MCLR pin function select bit (RE3/MCLR pin function is MCLR)
+ config CP = OFF         // Code Protection bit (Program memory code protection is disabled)
+ config CPD = OFF        // Data Code Protection bit (Data memory code protection is disabled)
+ config BOREN = ON       // Brown Out Reset Selection bits (BOR enabled)
+ config IESO = ON        // Internal External Switchover bit (Internal/External Switchover mode is enabled)
+ config FCMEN = ON       // Fail-Safe Clock Monitor Enabled bit (Fail-Safe Clock Monitor is enabled)
+ config LVP = OFF        // Low Voltage Programming Enable bit (RB3 pin has digital I/O, HV on MCLR must be used for programming)
+ config DEBUG=ON
+// CONFIG2
+ config BOR4V = BOR40V   // Brown-out Reset Selection bit (Brown-out Reset set to 4.0V)
+ config WRT = OFF        // Flash Program Memory Self Write Enable bits (Write protection off)
+ 
+PSECT udata
+tick:
+    DS 1
+counter:
+    DS 1
+counter2:
+    DS 1
+paro2:
+    DS 1
+paro1:
+    DS 1
+operador:
+    DS 1
+        
+PSECT code
+delay:
+movlw 0xff
+movwf counter
+counter_loop:
+movlw 0xff
+movwf tick
+tick_loop:
+decfsz tick,f
+goto tick_loop
+decfsz counter,f
+goto counter_loop
+return
+
+PSECT code
+delay_2s:
+movlw 0x05
+movwf paro1
+call delay
+decfsz  paro1
+goto $-2
+return
+
+PSECT code
+delay2:
+movlw 0xff
+movwf counter
+counter_loop2:
+movlw 0xff
+movwf tick
+tick_loop2:
+decfsz tick,f
+goto tick_loop2
+decfsz counter,f
+goto counter_loop2
+return
+    
+PSECT resetVec,class=CODE,delta=2
+resetVec:
+goto main
+    
+PSECT isr,class=CODE,delta=2
+isr:
+BANKSEL PORTD
+btfss INTCON,0
+retfie
+clrf PORTD 
+control:
+btfss PORTB,1
+goto evaluar
+goto lento
+evaluar:
+btfss PORTB,7
+retfie
+goto rapido
+lento:
+bcf INTCON,0
+bcf PORTD,1
+bcf PORTB,1
+retfie
+rapido:
+bcf INTCON,0
+bsf PORTD,1
+bcf PORTB,7
+retfie
+    
+PSECT main,class=CODE,delta=2
+main:
+BANKSEL OPTION_REG
+movlw 0b01000000
+movwf OPTION_REG
+BANKSEL WPUB
+movlw 0b10000010
+movwf WPUB
+clrf INTCON
+movlw 0b11001000
+movwf INTCON
+BANKSEL IOCB
+movlw 0b11111111
+movwf IOCB
+BANKSEL OSCCON
+movlw 0b01110000
+Movwf OSCCON
+BANKSEL ANSELH
+movlw 0b00000000
+movwf ANSELH
+BANKSEL ANSEL
+movlw 0b00000000
+movwf ANSEL
+BANKSEL TRISB
+movlw 0b10000010
+movwf TRISB    
+clrf TRISD
+movlw 0b00000000
+movwf TRISA 
+BANKSEL PORTB
+clrf PORTB
+movlw 0b00000000
+movwf PORTD
+BANKSEL PORTA
+movlw 0b00000000
+movwf PORTA
+INICIO:
+btfss PORTD,1
+goto caso2
+goto caso1
+caso1:
+bsf PORTA,0
+call delay2
+bcf PORTA,0
+call delay2
+goto INICIO
+caso2:
+btfss PORTD,1
+goto subcaso
+goto caso1
+subcaso:
+bsf PORTA,0
+call delay_2s
+bcf PORTA,0
+call delay_2s
+goto INICIO
+END resetVec
